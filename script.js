@@ -129,7 +129,7 @@ async function confermaGenerazionePDF() {
 async function generaPDF(d) {
   try {
     // carica il PDF modello dal percorso relativo
-    const url = 'preventivo.pdf';
+    const url = 'https://alfpes24.github.io/gipotest25/preventivo.pdf';
     const existingBytes = await fetch(url).then(r=>r.arrayBuffer());
     const pdfDoc = await PDFLib.PDFDocument.load(existingBytes);
     const form   = pdfDoc.getForm();
