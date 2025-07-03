@@ -25,7 +25,8 @@ function getIndiceStanze(n) {
 
 function toggleModal(id, show) {
   const modal = document.getElementById(id);
-  modal.classList[show ? 'remove' : 'add']('hidden');
+  if (show) modal.classList.remove('hidden');
+  else      modal.classList.add('hidden');
 }
 
 function showError(msg) {
@@ -53,23 +54,19 @@ function calcolaPreventivo() {
     return;
   }
 
-  // Calcola indicizzazione
+  // Indice di prezzo in base alle stanze
   const idx = getIndiceStanze(stanze);
   let unit = prezzi[bundle][crm ? 'crm' : 'solo'][idx];
 
-  // Sconto se pochi medici
-  if (medici / stanze <= 1.3) {
-    unit /= 1.5;
-  }
+  // Sconto se rapporto medici/stanze <= 1.3
+  if (medici / stanze <= 1.3) unit /= 1.5;
 
   const canoneReale = unit * stanze;
   const setupReale  = setupFees[idx];
+  const tabletFee   = tablet  ? 429 : 0;
+  const lettoreFee  = lettore ?  79 : 0;
 
-  // Costi fissi opzionali
-  const tabletFee  = tablet  ? 429 : 0;
-  const lettoreFee = lettore ?  79 : 0;
-
-  // Aggiunta Add-on
+  // Add-on selezionati
   const addons = Array.from(document.querySelectorAll('.addon:checked')).map(el => ({
     name : el.dataset.name,
     price: parseFloat(el.dataset.price) || 0,
@@ -78,26 +75,25 @@ function calcolaPreventivo() {
   const addonMens  = addons.reduce((sum, a) => sum + a.price, 0);
   const addonSetup = addons.reduce((sum, a) => sum + a.setup, 0);
 
-  // Prezzi a listino e reali
+  // Calcolo listino vs reale
   const canoneListino  = (canoneReale + addonMens) * 1.25;
   const setupListino   = (setupReale + addonSetup) * 2;
   const totaleListino  = setupListino + tabletFee + lettoreFee;
   const totaleReale    = setupReale + addonSetup + tabletFee + lettoreFee;
 
-  // Salva dati per il PDF
+  // Salvo tutto in globale per il PDF
   window._preventivo = {
     stanze, medici, bundle, crm, tablet, lettore,
     addons: addons.map(a => a.name),
     canoneReale, setupReale, addonMens, addonSetup,
     canoneListino, setupListino, totaleListino, totaleReale,
-    // campi struttura PDF (da compilare in modal)
     nomeStruttura: '', nomeReferente: '', email: '', telefono: ''
   };
 
-  // Aggiorna l'interfaccia
+  // Mostro i prezzi a listino
   document.getElementById('monthly-list-price').textContent = `${canoneListino.toFixed(2)} €`;
   document.getElementById('setup-list-price').textContent   = `${setupListino.toFixed(2)} €`;
-  document.getElementById('setup-total').textContent       = `${totaleListino.toFixed(2)} €`;
+  document.getElementById('setup-total').textContent        = `${totaleListino.toFixed(2)} €`;
 
   document.getElementById('listino-panel').classList.remove('hidden');
   document.getElementById('generate-pdf-btn').classList.remove('hidden');
@@ -108,25 +104,27 @@ function calcolaPreventivo() {
 // SIMULAZIONE PROMO PROMOZIONALE
 // =========================
 function avviaVerifica() {
-  const spinner = document.getElementById('loading-spinner');
-  const bar     = document.getElementById('progressBar');
+  const spinner   = document.getElementById('loading-spinner');
+  const bar       = document.getElementById('progressBar');
   const countdown = document.getElementById('countdown');
 
   spinner.classList.remove('hidden');
   document.getElementById('dettaglio-panel').classList.add('hidden');
   bar.style.width = '0%';
 
+  // Animazione progress bar
   let p = 0;
   const ani = setInterval(() => {
-    p += (100/150);
+    p += 100/150;
     bar.style.width = `${p}%`;
     if (p >= 100) clearInterval(ani);
   }, 100);
 
+  // Countdown 15s
   let sec = 15;
   countdown.textContent = `Attendere ${sec}s...`;
   const t = setInterval(() => {
-    sec -= 1;
+    sec--;
     countdown.textContent = `Attendere ${sec}s...`;
     if (sec <= 0) {
       clearInterval(t);
@@ -141,7 +139,7 @@ function mostraOffertaRiservata() {
   document.getElementById('default-monthly-price').textContent = `${d.canoneReale.toFixed(2)} €`;
   document.getElementById('list-monthly-crossed').textContent = `${d.canoneListino.toFixed(2)} €`;
   document.getElementById('setup-fee').textContent           = `${d.setupReale.toFixed(2)} €`;
-  document.getElementById('list-setup-crossed').textContent = `${d.setupListino.toFixed(2)} €`;
+  document.getElementById('list-setup-crossed').textContent  = `${d.setupListino.toFixed(2)} €`;
   document.getElementById('dettaglio-panel').classList.remove('hidden');
 }
 
@@ -149,7 +147,6 @@ function mostraOffertaRiservata() {
 // GENERAZIONE PDF
 // =========================
 async function confermaGenerazionePDF() {
-  // Leggi campi extra dal modal
   const nome  = document.getElementById('nomeStruttura').value.trim();
   const ref   = document.getElementById('nomeReferente').value.trim();
   const email = document.getElementById('email').value.trim();
@@ -161,19 +158,25 @@ async function confermaGenerazionePDF() {
   }
   toggleModal('pdf-modal', false);
 
-  // Aggiorna dati globali
-  Object.assign(window._preventivo, { nomeStruttura: nome, nomeReferente: ref, email, telefono: tel });
+  Object.assign(window._preventivo, {
+    nomeStruttura: nome,
+    nomeReferente: ref,
+    email: email,
+    telefono: tel
+  });
   await generaPDF(window._preventivo);
 }
 
 async function generaPDF(d) {
   try {
-    // Carica il modello PDF
+    // prendo PDFDocument da PDFLib caricato in pagina
+    const { PDFDocument } = PDFLib;
+
+    // carica modello e compila campi
     const bytes = await fetch('preventivo.pdf').then(r => r.arrayBuffer());
-    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+    const pdfDoc = await PDFDocument.load(bytes);
     const form   = pdfDoc.getForm();
 
-    // Compila i campi del PDF (i nomi devono esistere)
     form.getTextField('nome_struttura').setText(d.nomeStruttura);
     form.getTextField('nome_referente').setText(d.nomeReferente);
     form.getTextField('email').setText(d.email);
@@ -185,7 +188,6 @@ async function generaPDF(d) {
     form.getTextField('crm_incluso').setText(d.crm ? 'Sì' : 'No');
     form.getTextField('tablet_firma').setText(d.tablet ? 'Sì' : 'No');
     form.getTextField('lettore_ts').setText(d.lettore ? 'Sì' : 'No');
-
     form.getTextField('addons').setText(d.addons.join(', '));
 
     form.getTextField('canone_listino').setText(d.canoneListino.toFixed(2));
@@ -196,11 +198,10 @@ async function generaPDF(d) {
     form.getTextField('setup_fee').setText(d.setupReale.toFixed(2));
     form.getTextField('totale_setup_reale').setText(d.totaleReale.toFixed(2));
 
-    // Firma e data
     const today = new Date().toLocaleDateString('it-IT');
     form.getTextField('data_preventivo').setText(today);
 
-    // Download del PDF compilato
+    // scarica il PDF compilato
     const outBytes = await pdfDoc.save();
     const blob     = new Blob([outBytes], { type: 'application/pdf' });
     const link     = document.createElement('a');
@@ -220,10 +221,10 @@ async function generaPDF(d) {
 // =========================
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('calculate-btn').addEventListener('click', calcolaPreventivo);
-  document.getElementById('addon-btn').addEventListener('click',  () => toggleModal('addon-modal',  true));
-  document.getElementById('close-addon').addEventListener('click', () => toggleModal('addon-modal',  false));
-  document.getElementById('check-btn').addEventListener('click',    avviaVerifica);
+  document.getElementById('addon-btn')     .addEventListener('click',  () => toggleModal('addon-modal',  true));
+  document.getElementById('close-addon')   .addEventListener('click', () => toggleModal('addon-modal',  false));
+  document.getElementById('check-btn')     .addEventListener('click',    avviaVerifica);
   document.getElementById('generate-pdf-btn').addEventListener('click', () => toggleModal('pdf-modal', true));
-  document.getElementById('annulla-pdf').addEventListener('click', () => toggleModal('pdf-modal', false));
-  document.getElementById('conferma-pdf').addEventListener('click', confermaGenerazionePDF);
+  document.getElementById('annulla-pdf')   .addEventListener('click', () => toggleModal('pdf-modal', false));
+  document.getElementById('conferma-pdf')  .addEventListener('click', confermaGenerazionePDF);
 });
