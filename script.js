@@ -1,177 +1,230 @@
 // script.js
-// Gestione completa preventivatore + generazione PDF personalizzato
+// Gestione completa preventivatore GipoNext + generazione PDF
 
 // ———————————————————————————————
-// CONFIGURAZIONE PREZZI BASE
+// CONFIGURAZIONE PREZZI BASE E SOGLIE
 // ———————————————————————————————
 const prezzi = {
-  starter: { solo: [109,99,89,69,59,49,29,19], crm: [119,109,99,79,69,59,39,29] },
-  plus:    { solo: [144,134,124,104,84,74,64,54], crm: [154,144,134,114,94,84,74,64] },
-  vip:     { solo: [154,144,134,114,94,84,74,64], crm: [164,154,144,124,104,94,84,74] }
+  starter: { solo: [109, 99, 89, 69, 59, 49, 29, 19], crm: [119, 109, 99, 79, 69, 59, 39, 29] },
+  plus:    { solo: [144,134,124,104,84,74,64,54],  crm: [154,144,134,114,94,84,74,64] },
+  vip:     { solo: [154,144,134,114,94,84,74,64],  crm: [164,154,144,124,104,94,84,74] }
 };
-const setupFees = [500,500,500,500,750,750,750,1000];
+const setupFees = { starter: 500, plus: 750, vip: 1000 };
 const soglie = [1,2,4,6,8,10,15,20];
+
+// stato globale del preventivo
+let preventivo = {
+  // campi configurazione e calcolo
+  rooms: 0,
+  doctors: 0,
+  bundle: 'plus',
+  crm: false,
+  tablet: false,
+  cardReader: false,
+  additionalLoc: 0,
+  // risultati calcolo
+  canoneReale: 0,
+  setupReale: 0,
+  addonMens: 0,
+  addonSetup: 0,
+  canoneListino: 0,
+  setupListino: 0,
+  totaleListino: 0,
+  totaleReale: 0,
+  // flag promozione
+  promoActive: false
+};
 
 // ———————————————————————————————
 // UTILITY
 // ———————————————————————————————
-function getIndiceStanze(n) {
+function getSogliaIndex(n) {
   for (let i = 0; i < soglie.length; i++) {
     if (n <= soglie[i]) return i;
   }
   return soglie.length - 1;
 }
-
-function toggleModal(id, show) {
+function toggle(id, show) {
   document.getElementById(id).classList[show ? 'remove' : 'add']('hidden');
 }
-
-function mostraErrore(msg) {
-  const form = document.getElementById('calculator-form');
-  const div = document.createElement('div');
-  div.textContent = msg;
-  div.style.cssText = 'color:red;font-weight:bold;text-align:center;margin:12px 0';
-  form.prepend(div);
-  setTimeout(() => div.remove(), 3000);
+function showError(msg) {
+  alert(msg);
 }
 
 // ———————————————————————————————
-// CALCOLO PREVENTIVO
+// STEP 1: CALCOLO PREVENTIVO A LISTINO
 // ———————————————————————————————
-function calcolaPreventivo() {
-  const stanze  = parseInt(document.getElementById('rooms').value)  || 0;
-  const medici  = parseInt(document.getElementById('doctors').value)|| 0;
-  const bundle  = document.getElementById('bundle').value;
-  const crm     = document.getElementById('crm').checked;
-  const tablet  = document.getElementById('tabletFirma').checked;
-  const lettore = document.getElementById('lettoreTessera').checked;
+document.getElementById('calculate-btn').addEventListener('click', () => {
+  const rooms   = parseInt(document.getElementById('rooms').value) || 0;
+  const doctors = parseInt(document.getElementById('doctors').value) || 0;
+  if (!rooms || !doctors) return showError('Inserisci N° Ambulatori e Medici validi.');
 
-  if (!stanze || !medici) {
-    mostraErrore('Inserisci valori validi per ambulatori e medici');
-    return;
-  }
+  const bundle      = document.getElementById('bundle').value;
+  const crm         = document.getElementById('crm').checked;
+  const tablet      = document.getElementById('tabletFirma').checked;
+  const cardReader  = document.getElementById('lettoreTessera').checked;
+  const additional  = parseInt(document.getElementById('additional-locations')?.value || 0);
 
-  const idx = getIndiceStanze(stanze);
-  let unit = prezzi[bundle][crm ? 'crm' : 'solo'][idx];
-  if (medici / stanze <= 1.3) unit /= 1.5;
+  // soglia per il bundle
+  const idx = getSogliaIndex(doctors);
+  const baseUnit = prezzi[bundle][ crm ? 'crm' : 'solo' ][idx];
 
-  const canoneReale = unit * stanze;
-  const setupReale  = setupFees[idx];
+  // costi reali
+  const canoneReale = baseUnit;
+  const setupReale  = setupFees[bundle];
 
-  const tabletFee  = tablet  ? 429 : 0;
-  const lettoreFee = lettore ?  79 : 0;
-
+  // add-on installati
   const addons = Array.from(document.querySelectorAll('.addon:checked'))
-    .map(el => ({ name: el.dataset.name, price: parseFloat(el.dataset.price)||0, setup: parseFloat(el.dataset.setup)||0 }));
-  const addonMens  = addons.reduce((s,a)=> s+a.price,0);
-  const addonSetup = addons.reduce((s,a)=> s+a.setup,0);
+    .map(ch => ({
+      price:  parseFloat(ch.dataset.price)||0,
+      setup:  parseFloat(ch.dataset.setup)||0
+    }));
+  const addonMens  = addons.reduce((sum,a) => sum + a.price, 0);
+  const addonSetup = addons.reduce((sum,a) => sum + a.setup, 0);
 
-  const canoneListino  = (canoneReale + addonMens)*1.25;
-  const setupListino   = (setupReale  + addonSetup)*2;
-  const totaleListino  = setupListino + tabletFee + lettoreFee;
-  const totaleReale    = setupReale + addonSetup + tabletFee + lettoreFee;
+  // costi accessori
+  const tabletFee     = tablet     ? 429 : 0;
+  const cardReaderFee = cardReader ?  79 : 0;
+  const sediFee       = additional * 99;
 
-  window._preventivo = { nomeStruttura:'', referente:'', telefono:'', dataPreventivo:'', rooms:stanze, doctors:medici, bundle, crm, tablet, lettore, addons:addons.map(a=>a.name), canoneReale, setupReale, addonMens, addonSetup, canoneListino, setupListino, totaleListino, totaleReale };
+  // listino (con +25%)
+  const canoneListino = (canoneReale + addonMens) * 1.25;
+  const setupListino  = (setupReale  + addonSetup) * 1.25;
+  const totaleListino = (canoneListino + sediFee).toFixed(2);
+  const totaleOneOff  = (setupListino + tabletFee + cardReaderFee).toFixed(2);
 
-  document.getElementById('monthly-list-price').textContent = `${canoneListino.toFixed(2)} €`;
-  document.getElementById('setup-list-price').textContent   = `${setupListino.toFixed(2)} €`;
-  document.getElementById('setup-total').textContent       = `${totaleListino.toFixed(2)} €`;
-  document.getElementById('listino-panel').classList.remove('hidden');
-  document.getElementById('generate-pdf-btn').classList.remove('hidden');
-  toggleModal('addon-modal', false);
-}
+  // salva nel globale
+  Object.assign(preventivo, {
+    rooms, doctors, bundle, crm, tablet, cardReader, additional,
+    canoneReale, setupReale, addonMens, addonSetup,
+    canoneListino, setupListino,
+    totaleListino, totaleOneOff,
+    promoActive: false
+  });
 
-// ———————————————————————————————
-// RIEMPIMENTO CAMPI PDF
-// ———————————————————————————————
-function fillPDFFields(form, d) {
-  try { form.getField("nome_struttura").setText(d["nome_struttura"]||""); } catch(e){console.warn("Campo non trovato: nome_struttura");}
-  try { form.getField("nome_referente").setText(d["nome_referente"]||""); } catch(e){console.warn("Campo non trovato: nome_referente");}
-  try { form.getField("nome_sale").setText(d["nome_sale"]||""); } catch(e){console.warn("Campo non trovato: nome_sale");}
-  try { form.getField("data_preventivo").setText(d["data_preventivo"]||""); } catch(e){console.warn("Campo non trovato: data_preventivo");}
-  try { form.getField("nome_struttura_2").setText(d["nome_struttura_2"]||""); } catch(e){console.warn("Campo non trovato: nome_struttura_2");}
-  try { form.getField("nome_referente_2").setText(d["nome_referente_2"]||""); } catch(e){console.warn("Campo non trovato: nome_referente_2");}
-  try { form.getField("telefono_sale").setText(d["telefono_sale"]||""); } catch(e){console.warn("Campo non trovato: telefono_sale");}
-  try { form.getField("n_ambulatori").setText(d["n_ambulatori"]||""); } catch(e){console.warn("Campo non trovato: n_ambulatori");}
-  try { form.getField("versione_gipo").setText(d["versione_gipo"]||""); } catch(e){console.warn("Campo non trovato: versione_gipo");}
-  try { form.getField("canone_listino").setText(d["canone_listino"]||""); } catch(e){console.warn("Campo non trovato: canone_listino");}
-  try { form.getField("n_ambulatori_2").setText(d["n_ambulatori_2"]||""); } catch(e){console.warn("Campo non trovato: n_ambulatori_2");}
-  try { form.getField("canone_listino_2").setText(d["canone_listino_2"]||""); } catch(e){console.warn("Campo non trovato: canone_listino_2");}
-  try { form.getField("n_gipo_smartQ").setText(d["n_gipo_smartQ"]||""); } catch(e){console.warn("Campo non trovato: n_gipo_smartQ");}
-  try { form.getField("prezzo_smartQ").setText(d["prezzo_smartQ"]||""); } catch(e){console.warn("Campo non trovato: prezzo_smartQ");}
-  try { form.getField("n_sedi").setText(d["n_sedi"]||""); } catch(e){console.warn("Campo non trovato: n_sedi");}
-  try { form.getField("prezzo_modulo_multi_sede").setText(d["prezzo_modulo_multi_sede"]||""); } catch(e){console.warn("Campo non trovato: prezzo_modulo_multi_sede");}
-  try { form.getField("n_gipo_sign").setText(d["n_gipo_sign"]||""); } catch(e){console.warn("Campo non trovato: n_gipo_sign");}
-  try { form.getField("prezzo_modulo_gipo_sign").setText(d["prezzo_modulo_gipo_sign"]||""); } catch(e){console.warn("Campo non trovato: prezzo_modulo_gipo_sign");}
-  try { form.getField("n_gipo_ecr").setText(d["n_gipo_ecr"]||""); } catch(e){console.warn("Campo non trovato: n_gipo_ecr");}
-  try { form.getField("prezzo_modulo_gipo_ecr").setText(d["prezzo_modulo_gipo_ecr"]||""); } catch(e){console.warn("Campo non trovato: prezzo_modulo_gipo_ecr");}
-  try { form.getField("n_modulo_gipo_ssn").setText(d["n_modulo_gipo_ssn"]||""); } catch(e){console.warn("Campo non trovato: n_modulo_gipo_ssn");}
-  try { form.getField("prezzo_modulo_gipo_ssn").setText(d["prezzo_modulo_gipo_ssn"]||""); } catch(e){console.warn("Campo non trovato: prezzo_modulo_gipo_ssn");}
-  try { form.getField("n_modulo_gipo_bi").setText(d["n_modulo_gipo_bi"]||""); } catch(e){console.warn("Campo non trovato: n_modulo_gipo_bi");}
-  try { form.getField("prezzo_modulo_gipo_bi").setText(d["prezzo_modulo_gipo_bi"]||""); } catch(e){console.warn("Campo non trovato: prezzo_modulo_gipo_bi");}
-  try { form.getField("prezzo_modulo_totale_mensile").setText(d["prezzo_modulo_totale_mensile"]||""); } catch(e){console.warn("Campo non trovato: prezzo_modulo_totale_mensile");}
-  try { form.getField("n_ts").setText(d["n_ts"]||""); } catch(e){console.warn("Campo non trovato: n_ts");}
-  try { form.getField("prezzo_ts").setText(d["prezzo_ts"]||""); } catch(e){console.warn("Campo non trovato: prezzo_ts");}
-  try { form.getField("totale_ts").setText(d["totale_ts"]||""); } catch(e){console.warn("Campo non trovato: totale_ts");}
-  try { form.getField("n_tablet").setText(d["n_tablet"]||""); } catch(e){console.warn("Campo non trovato: n_tablet");}
-  try { form.getField("prezzo_tablet").setText(d["prezzo_tablet"]||""); } catch(e){console.warn("Campo non trovato: prezzo_tablet");}
-  try { form.getField("totale_tablet").setText(d["totale_tablet"]||""); } catch(e){console.warn("Campo non trovato: totale_tablet");}
-  try { form.getField("prezzo_formazione_listino").setText(d["prezzo_formazione_listino"]||""); } catch(e){console.warn("Campo non trovato: prezzo_formazione_listino");}
-  try { form.getField("sconto_formazione").setText(d["sconto_formazione"]||""); } catch(e){console.warn("Campo non trovato: sconto_formazione");}
-  try { form.getField("totale_formazione").setText(d["totale_formazione"]||""); } catch(e){console.warn("Campo non trovato: totale_formazione");}
-  try { form.getField("setupfee_listino").setText(d["setupfee_listino"]||""); } catch(e){console.warn("Campo non trovato: setupfee_listino");}
-  try { form.getField("setupfee_sconto").setText(d["setupfee_sconto"]||""); } catch(e){console.warn("Campo non trovato: setupfee_sconto");}
-  try { form.getField("setupfee_totale").setText(d["setupfee_totale"]||""); } catch(e){console.warn("Campo non trovato: setupfee_totale");}
-  try { form.getField("totale_una_tantum").setText(d["totale_una_tantum"]||""); } catch(e){console.warn("Campo non trovato: totale_una_tantum");}
-}
+  // mostra panel listino
+  document.getElementById('listino-monthly').textContent = `${canoneListino.toFixed(2)} €`;
+  document.getElementById('listino-setup').textContent   = `${setupListino.toFixed(2)} €`;
+  document.getElementById('listino-total-month').textContent = `${totaleListino} €`;
+  toggle('listino-panel', true);
+});
 
 // ———————————————————————————————
-// GENERAZIONE PDF
+// STEP 2: VERIFICA CONDIZIONI RISERVATE
 // ———————————————————————————————
-async function generaPDF(d) {
+document.getElementById('check-btn').addEventListener('click', () => {
+  toggle('listino-panel', false);
+  toggle('loading-panel', true);
+
+  // avvia barra progresso
+  const bar = document.getElementById('progress-bar');
+  setTimeout(() => bar.style.width = '100%', 50);
+
+  // countdown 15s
+  let count = 15;
+  const cdEl = document.getElementById('countdown');
+  cdEl.textContent = count;
+  const interval = setInterval(() => {
+    count--;
+    cdEl.textContent = count;
+    if (count === 0) {
+      clearInterval(interval);
+      // promozione attiva
+      preventivo.promoActive = true;
+      const {
+        canoneReale,  setupReale,
+        addonMens,    addonSetup,
+        rooms,        doctors,       additional,
+        tablet,       cardReader
+      } = preventivo;
+
+      // calcola prezzi reali + costi sedi
+      const sediFee = additional * 99;
+      const canonePromo   = canoneReale + sediFee;
+      const setupPromo    = setupReale  + addonSetup + (tablet?429:0) + (cardReader?79:0);
+
+      // mostra pannello promozione
+      document.getElementById('promo-monthly').textContent = `${canonePromo.toFixed(2)} €`;
+      document.getElementById('crossed-monthly').textContent = `${preventivo.canoneListino.toFixed(2)} €`;
+      document.getElementById('promo-setup').textContent   = `${setupPromo.toFixed(2)} €`;
+      document.getElementById('crossed-setup').textContent  = `${preventivo.setupListino.toFixed(2)} €`;
+      document.getElementById('promo-total-month').textContent = `${canonePromo.toFixed(2)} €`;
+
+      toggle('loading-panel', false);
+      toggle('promo-panel', true);
+    }
+  }, 1000);
+});
+
+// ———————————————————————————————
+// STEP 3: GENERAZIONE PDF
+// ———————————————————————————————
+document.getElementById('generate-pdf-btn').addEventListener('click', () => {
+  toggle('pdf-modal', true);
+});
+document.getElementById('cancel-pdf-btn').addEventListener('click', () => {
+  toggle('pdf-modal', false);
+});
+
+document.getElementById('conferma-pdf').addEventListener('click', async () => {
+  // raccogli dati modal
+  const nomeS = document.getElementById('nomeStruttura').value.trim();
+  const ref   = document.getElementById('nomeReferente').value.trim();
+  const mail  = document.getElementById('email').value.trim();
+  const tel   = document.getElementById('telefono').value.trim();
+  const sale  = document.getElementById('nomeSale').value.trim();
+  if (!nomeS||!ref||!mail||!tel||!sale) {
+    return showError('Compila tutti i campi per il PDF.');
+  }
+  toggle('pdf-modal', false);
+
+  // prepara oggetto dati per PDF
+  const dataPrev = new Date().toLocaleDateString('it-IT');
+  const isPromo  = preventivo.promoActive;
+  const sediFee  = preventivo.additional * 99;
+  const canone   = (isPromo
+    ? preventivo.canoneReale + sediFee
+    : preventivo.canoneListino
+  ).toFixed(2);
+  const setup    = (isPromo
+    ? preventivo.setupReale + preventivo.addonSetup + (preventivo.tablet?429:0) + (preventivo.cardReader?79:0)
+    : preventivo.setupListino
+  ).toFixed(2);
+
+  const pdfData = {
+    nome_struttura: nomeS,
+    nome_referente: ref,
+    email,
+    telefono_sale: tel,
+    nome_sale: sale,
+    data_preventivo: dataPrev,
+    canone_listino: `${canone} €`,
+    setup_scontato: `${setup} €`
+  };
+
+  // genera PDF tramite PDF-lib
   try {
     const { PDFDocument } = PDFLib;
+    const url = 'preventivo.pdf';  // o URL GitHub raw
+    const bytes = await fetch(url).then(r => r.arrayBuffer());
+    const pdfDoc = await PDFDocument.load(bytes);
+    const form = pdfDoc.getForm();
 
-    // carica il PDF modello dal link raw GitHub
-    const url       = 'https://raw.githubusercontent.com/tuo-username/repo/main/preventivo-ok.pdf';
-    const bytes     = new Uint8Array(await fetch(url).then(r=>r.arrayBuffer()));
-    const pdfDoc    = await PDFDocument.load(bytes, { ignoreEncryption: true });
-    const form      = pdfDoc.getForm();
+    // riempi campi
+    Object.entries(pdfData).forEach(([key, val]) => {
+      try { form.getTextField(key).setText(val); }
+      catch (e) { /* campo non esiste, skip */ }
+    });
 
-    // riempi i campi
-    fillPDFFields(form, d);
-
-    // salva e scarica
     const pdfBytes = await pdfDoc.save();
-    const blob     = new Blob([pdfBytes], { type: 'application/pdf' });
-    const link     = document.createElement('a');
-    link.href      = URL.createObjectURL(blob);
-    link.download  = `Preventivo_${d.nomeStruttura}.pdf`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Preventivo_${nomeS}.pdf`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   } catch (err) {
     console.error(err);
-    mostraErrore('Errore nella generazione del PDF');
+    showError('Errore generazione PDF.');
   }
-}
-
-// ———————————————————————————————
-// EVENTI INIT
-// ———————————————————————————————
-window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('calculate-btn').addEventListener('click', calcolaPreventivo);
-  document.getElementById('addon-btn').addEventListener('click', () => toggleModal('addon-modal', true));
-  document.getElementById('close-addon').addEventListener('click', () => toggleModal('addon-modal', false));
-  document.getElementById('generate-pdf-btn').addEventListener('click', () => toggleModal('pdf-modal', true));
-  document.getElementById('annulla-pdf').addEventListener('click', () => toggleModal('pdf-modal', false));
-  document.getElementById('conferma-pdf').addEventListener('click', async () => {
-    const nomeS    = document.getElementById('nomeStruttura').value.trim();
-    const ref      = document.getElementById('nomeReferente').value.trim();
-    const tel      = document.getElementById('telefono').value.trim();
-    const dataPrev = new Date().toLocaleDateString('it-IT');
-    if(!nomeS||!ref||!tel){ mostraErrore('Compila tutti i campi per il PDF'); return; }
-    toggleModal('pdf-modal', false);
-    window._preventivo = { ...window._preventivo, nome_struttura: nomeS, nome_referente: ref, telefono_sale: tel, data_preventivo: dataPrev };
-    await generaPDF(window._preventivo);
-  });
 });
