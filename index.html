@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -62,8 +63,12 @@
           <label><input type="checkbox" id="lettoreTessera" /> Lettore Tessera Sanitaria (+79€)</label>
         </div>
 
-        <button type="button" id="addon-btn" class="btn-outline">+ Moduli Add-On</button>
+        <div class="form-group">
+          <label for="additional-locations">Sedi Aggiuntive</label>
+          <input type="number" id="additional-locations" min="0" value="0" />
+        </div>
 
+        <button type="button" id="addon-btn" class="btn-outline">+ Moduli Add-On</button>
         <button type="button" id="calculate-btn" class="btn-primary">Calcola</button>
         <button type="button" id="generate-pdf-btn" class="btn-outline hidden">Genera PDF Preventivo</button>
       </form>
@@ -74,26 +79,24 @@
   <div id="addon-modal" class="modal hidden">
     <div class="modal-content">
       <h3>Seleziona i moduli Add-On</h3>
-
-      <label><input type="checkbox" class="addon" data-name="ECR" data-price="70"> ECR (+70€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="App personalizzata 30–50" data-price="100"> App personalizzata (30–50 profili) (+100€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="App personalizzata 51–100" data-price="150"> App personalizzata (51–100 profili) (+150€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="App personalizzata 101–150" data-price="200"> App personalizzata (101–150 profili) (+200€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="App personalizzata >150" data-price="0" data-custom="true"> App personalizzata (>150 profili) (da valutare)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Medicina dello Sport" data-price="35"> Medicina dello Sport (+35€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Sviluppo tracciati" data-price="75"> Sviluppo tracciati (+75€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Integrazione FSE" data-price="75"> Integrazione FSE (+75€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Integrazione RIS/PACS" data-price="0" data-custom="true"> Integrazione RIS/PACS (da valutare)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Integrazione DEMA" data-price="75"> Integrazione DEMA (+75€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Integrazione LIS" data-price="0" data-custom="true"> Integrazione LIS (da valutare)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="SmartQ" data-price="90" data-setup="299"> SmartQ – elimina code (+90€/mese, setup 299€)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Medicina del Lavoro" data-price="35"> Medicina del Lavoro (+35€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Integrazione CUP" data-price="75"> Integrazione CUP (+75€/mese)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="GIPO Sign" data-price="10"> GIPO Sign (+10€/profilo)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Multi sede" data-price="99"> Multi sede (+99€/sede)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="GIPO Dental" data-price="40"> GIPO Dental (+40€/poltrona)</label><br/>
-      <label><input type="checkbox" class="addon" data-name="Licenza NOA" data-price="15"> Licenza aggiuntiva NOA (+15€/mese per licenza)</label><br/>
-
+      <label><input type="checkbox" class="addon" data-name="ECR" data-price="70" /> ECR (+70€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="App personalizzata 30–50" data-price="100" /> App personalizzata (30–50 profili) (+100€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="App personalizzata 51–100" data-price="150" /> App personalizzata (51–100 profili) (+150€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="App personalizzata 101–150" data-price="200" /> App personalizzata (101–150 profili) (+200€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="App personalizzata >150" data-price="0" data-custom="true" /> App personalizzata (>150 profili) (da valutare)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Medicina dello Sport" data-price="35" /> Medicina dello Sport (+35€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Sviluppo tracciati" data-price="75" /> Sviluppo tracciati (+75€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Integrazione FSE" data-price="75" /> Integrazione FSE (+75€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Integrazione RIS/PACS" data-price="0" data-custom="true" /> Integrazione RIS/PACS (da valutare)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Integrazione DEMA" data-price="75" /> Integrazione DEMA (+75€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Integrazione LIS" data-price="0" data-custom="true" /> Integrazione LIS (da valutare)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="SmartQ" data-price="90" data-setup="299" /> SmartQ – elimina code (+90€/mese, setup 299€)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Medicina del Lavoro" data-price="35" /> Medicina del Lavoro (+35€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Integrazione CUP" data-price="75" /> Integrazione CUP (+75€/mese)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="GIPO Sign" data-price="10" /> GIPO Sign (+10€/profilo)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Multi sede" data-price="99" /> Multi sede (+99€/sede)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="GIPO Dental" data-price="40" /> GIPO Dental (+40€/poltrona)</label><br/>
+      <label><input type="checkbox" class="addon" data-name="Licenza NOA" data-price="15" /> Licenza aggiuntiva NOA (+15€/mese per licenza)</label><br/>
       <button type="button" id="close-addon" class="btn-outline" style="margin-top: 20px;">Chiudi</button>
     </div>
   </div>
@@ -102,18 +105,14 @@
   <div id="pdf-modal" class="modal hidden">
     <div class="modal-content">
       <h3>Completa i dati per il preventivo</h3>
-      
       <div class="form-group">
         <label for="nomeStruttura">Nome Struttura</label>
         <input type="text" id="nomeStruttura" required />
       </div>
-      
-      <div class="form-group">
+      <div class="form-group">  
         <label for="nomeReferente">Nome Referente</label>
         <input type="text" id="nomeReferente" required />
       </div>
-
-      <!-- Nuovi campi obbligatori -->
       <div class="form-group">
         <label for="email">Email</label>
         <input type="email" id="email" required />
@@ -122,12 +121,10 @@
         <label for="telefono">Telefono</label>
         <input type="tel" id="telefono" required />
       </div>
-
       <div class="form-group">
         <label for="nomeSale">Nome Sale</label>
         <input type="text" id="nomeSale" required />
       </div>
-
       <button type="button" id="conferma-pdf" class="btn-primary">
         Continua e genera PDF
       </button>
@@ -143,11 +140,9 @@
     <div class="price-row"><span>Canone mensile</span><strong id="monthly-list-price">-- €</strong></div>
     <div class="price-row"><span>Setup una tantum</span><strong id="setup-list-price">-- €</strong></div>
     <div class="price-row"><span>Totale una tantum</span><strong id="setup-total">-- €</strong></div>
-
     <a href="https://apps.docusign.com/send/templates?view=shared" target="_blank" class="btn-primary full">
       Procedi e firma ora con DocuSign
     </a>
-
     <button id="check-btn" class="btn-outline">Verifica condizioni riservate</button>
   </section>
 
@@ -167,7 +162,6 @@
   <section id="dettaglio-panel" class="card hidden">
     <h2 class="highlight">Ottime notizie!</h2>
     <p class="subtitle">È disponibile un’offerta riservata per la tua configurazione.</p>
-
     <div class="price-row">
       <span>Canone mensile</span>
       <div>
@@ -175,7 +169,6 @@
         <span class="crossed" id="list-monthly-crossed">-- €</span>
       </div>
     </div>
-
     <div class="price-row">
       <span>Setup una tantum</span>
       <div>
@@ -183,24 +176,22 @@
         <span class="crossed" id="list-setup-crossed">-- €</span>
       </div>
     </div>
-
     <div class="price-row">
       <span>Bonus incluso</span>
       <strong class="bonus">Formazione e Assistenza</strong>
     </div>
-
     <div class="price-row">
       <span>⏱️ Valida ancora per</span>
       <strong class="timer">2 h 38 min</strong>
     </div>
-
     <a href="https://apps.docusign.com/send/templates?view=shared" target="_blank" class="btn-primary full">
       Blocca ora e firma con DocuSign
     </a>
   </section>
-<!-- carica pdf-lib dalla CDN -->
-<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-  
+
+  <!-- PDF-lib -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
   <script src="script.js" defer></script>
 </body>
 </html>
+```
