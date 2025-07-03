@@ -155,7 +155,7 @@ async function generaPDF(d) {
 
 
     // carica il PDF modello
-    const url           = 'https://alfpes24.github.io/gipotest25/preventivo-ok.pdf';
+    const url           = 'https://alfpes24.github.io/gipotest25/preventivo.pdf';
     const arrayBuffer   = await fetch(url).then(r => r.arrayBuffer());
     const bytes         = new Uint8Array(arrayBuffer);
 
