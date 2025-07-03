@@ -155,7 +155,7 @@ async function generaPDF(d) {
     const { PDFDocument } = PDFLibNS;
 
     // carica il PDF modello
-    const url           = 'preventivo.pdf';
+    const url           = 'preventivo-ok.pdf';
     const arrayBuffer   = await fetch(url).then(r => r.arrayBuffer());
     const bytes         = new Uint8Array(arrayBuffer);
 
