@@ -76,18 +76,15 @@ function calcolaPreventivo() {
   const totaleReale   = setupReale + addonSetup + tabletFee + lettoreFee;
 
   window._preventivo = {
-    // sezione Dati Struttura
     nomeStruttura: '',
     referente:    '',
     telefono:     '',
     dataPreventivo: '',
-    // sezione Base
     rooms:        stanze,
     doctors:      medici,
     bundle,
     crm, tablet, lettore,
     addons:       addons.map(a=>a.name),
-    // prezzi
     canoneReale, setupReale,
     addonMens, addonSetup,
     canoneListino, setupListino, totaleListino, totaleReale
@@ -99,6 +96,28 @@ function calcolaPreventivo() {
   document.getElementById('listino-panel').classList.remove('hidden');
   document.getElementById('generate-pdf-btn').classList.remove('hidden');
   toggleModal('addon-modal', false);
+}
+
+// ———————————————————————————————
+// DYNAMIC LOAD DI PDF-LIB
+// ———————————————————————————————
+function loadPDFLib() {
+  return new Promise((resolve, reject) => {
+    if (window.PDFLib && window.PDFLib.PDFDocument) {
+      return resolve(window.PDFLib);
+    }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/pdf-lib/dist/pdf-lib.min.js';
+    script.onload = () => {
+      if (window.PDFLib && window.PDFLib.PDFDocument) {
+        resolve(window.PDFLib);
+      } else {
+        reject(new Error('pdf-lib non disponibile dopo caricamento'));
+      }
+    };
+    script.onerror = () => reject(new Error('Errore caricamento di pdf-lib'));
+    document.head.appendChild(script);
+  });
 }
 
 // ———————————————————————————————
@@ -128,17 +147,19 @@ async function confermaGenerazionePDF() {
 
 async function generaPDF(d) {
   try {
-    // carica il PDF modello dal percorso relativo
-    const url = 'https://alfpes24.github.io/gipotest25/preventivo.pdf';
+    const PDFLibNS = await loadPDFLib();
+    const { PDFDocument } = PDFLibNS;
+
+    // carica il PDF modello
+    const url = 'preventivo.pdf';
     const existingBytes = await fetch(url).then(r=>r.arrayBuffer());
-    const pdfDoc = await PDFLib.PDFDocument.load(existingBytes);
+    const pdfDoc = await PDFDocument.load(existingBytes);
     const form   = pdfDoc.getForm();
 
     // helper per scrivere in sicurezza
     function setField(name, value) {
       try {
-        const field = form.getField(name);
-        field.setText(value);
+        form.getField(name).setText(value);
       } catch (e) {
         console.warn(`Campo '${name}' non trovato`, e);
       }
@@ -155,7 +176,7 @@ async function generaPDF(d) {
     setField('versione_gipo', d.bundle.toUpperCase());
     setField('canone_listino', d.canoneListino.toFixed(2));
 
-    // 3. Moduli Aggiuntivi (lista generica)
+    // 3. Moduli Aggiuntivi
     setField('moduli_aggiuntivi', d.addons.join(', ') || '-');
 
     // 4. Offerta Riservata
@@ -178,7 +199,6 @@ async function generaPDF(d) {
     link.download  = `Preventivo_${d.nomeStruttura}.pdf`;
     link.click();
     URL.revokeObjectURL(link.href);
-
   } catch (err) {
     console.error(err);
     mostraErrore('Errore generazione PDF');
