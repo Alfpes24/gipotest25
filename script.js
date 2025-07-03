@@ -151,8 +151,8 @@ async function confermaGenerazionePDF() {
 
 async function generaPDF(d) {
   try {
-    const PDFLibNS    = await loadPDFLib();
-    const { PDFDocument } = PDFLibNS;
+    const { PDFDocument } = PDFLib;
+
 
     // carica il PDF modello
     const url           = 'preventivo-ok.pdf';
