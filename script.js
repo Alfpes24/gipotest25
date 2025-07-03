@@ -51,20 +51,16 @@ function calcolaPreventivo() {
     return;
   }
 
-  // base tariffa
   const idx = getIndiceStanze(stanze);
   let unit = prezzi[bundle][ crm ? 'crm' : 'solo' ][idx];
-  // sconto se pochi medici
   if (medici / stanze <= 1.3) unit /= 1.5;
 
   const canoneReale = unit * stanze;
   const setupReale  = setupFees[idx];
 
-  // opzionali fissi
   const tabletFee  = tablet  ? 429 : 0;
   const lettoreFee = lettore ?  79 : 0;
 
-  // add-on variabili
   const addons = Array.from(document.querySelectorAll('.addon:checked'))
     .map(el=>({
       name : el.dataset.name,
@@ -74,25 +70,22 @@ function calcolaPreventivo() {
   const addonMens = addons.reduce((s,a)=> s + a.price, 0);
   const addonSetup= addons.reduce((s,a)=> s + a.setup, 0);
 
-  // prezzi a listino con maggiorazione 25% e setup x2
   const canoneListino = (canoneReale + addonMens) * 1.25;
   const setupListino  = (setupReale + addonSetup)  * 2;
   const totaleListino = setupListino + tabletFee + lettoreFee;
   const totaleReale   = setupReale + addonSetup + tabletFee + lettoreFee;
 
-  // salvo per PDF
   window._preventivo = {
     // sezione Dati Struttura
     nomeStruttura: '',
     referente:    '',
-    email:        '',
     telefono:     '',
+    dataPreventivo: '',
     // sezione Base
     rooms:        stanze,
     doctors:      medici,
     bundle,
     crm, tablet, lettore,
-    // addon
     addons:       addons.map(a=>a.name),
     // prezzi
     canoneReale, setupReale,
@@ -100,7 +93,6 @@ function calcolaPreventivo() {
     canoneListino, setupListino, totaleListino, totaleReale
   };
 
-  // aggiorno DOM
   document.getElementById('monthly-list-price').textContent = `${canoneListino.toFixed(2)} €`;
   document.getElementById('setup-list-price').textContent   = `${setupListino.toFixed(2)} €`;
   document.getElementById('setup-total').textContent       = `${totaleListino.toFixed(2)} €`;
@@ -110,69 +102,25 @@ function calcolaPreventivo() {
 }
 
 // ———————————————————————————————
-// SIMULAZIONE PROMOZIONE
-// ———————————————————————————————
-function avviaVerifica() {
-  const spinner = document.getElementById('loading-spinner');
-  const countdownEl = document.getElementById('countdown');
-  const bar = document.getElementById('progressBar');
-
-  spinner.classList.remove('hidden');
-  document.getElementById('dettaglio-panel').classList.add('hidden');
-  bar.style.width = '0%';
-
-  let progress = 0;
-  const anim = setInterval(()=>{
-    progress += 100/150;
-    bar.style.width = `${progress}%`;
-    if (progress>=100) clearInterval(anim);
-  },100);
-
-  let secs = 15;
-  countdownEl.textContent = `Attendere ${secs}s...`;
-  const timer = setInterval(()=>{
-    secs--;
-    countdownEl.textContent = `Attendere ${secs}s...`;
-    if (secs<=0) {
-      clearInterval(timer);
-      spinner.classList.add('hidden');
-      mostraOffertaRiservata();
-    }
-  },1000);
-}
-
-function mostraOffertaRiservata() {
-  const d = window._preventivo;
-  document.getElementById('default-monthly-price').textContent = `${d.canoneReale.toFixed(2)} €`;
-  document.getElementById('list-monthly-crossed').textContent = `${d.canoneListino.toFixed(2)} €`;
-  document.getElementById('setup-fee').textContent           = `${d.setupReale.toFixed(2)} €`;
-  document.getElementById('list-setup-crossed').textContent = `${d.setupListino.toFixed(2)} €`;
-
-  document.getElementById('dettaglio-panel').classList.remove('hidden');
-  document.getElementById('dettaglio-panel').scrollIntoView({behavior:'smooth'});
-}
-
-// ———————————————————————————————
 // GENERAZIONE PDF
 // ———————————————————————————————
 async function confermaGenerazionePDF() {
-  // prendo i dati extra dal form
   const nomeS = document.getElementById('nomeStruttura').value.trim();
   const ref   = document.getElementById('nomeReferente').value.trim();
-  const email = document.getElementById('email').value.trim();
   const tel   = document.getElementById('telefono').value.trim();
+  const dataPrev = new Date().toLocaleDateString('it-IT');
 
-  if(!nomeS||!ref||!email||!tel) {
-    mostraErrore('Compila tutti i campi per il PDF (Struttura, Referente, Email, Telefono)');
+  if(!nomeS||!ref||!tel) {
+    mostraErrore('Compila tutti i campi per il PDF (Struttura, Referente, Telefono)');
     return;
   }
   toggleModal('pdf-modal', false);
 
-  // aggiorno dati globali
   Object.assign(window._preventivo, {
     nomeStruttura: nomeS,
     referente: ref,
-    email, telefono: tel
+    telefono: tel,
+    dataPreventivo: dataPrev
   });
 
   await generaPDF(window._preventivo);
@@ -180,56 +128,49 @@ async function confermaGenerazionePDF() {
 
 async function generaPDF(d) {
   try {
-    // carica il PDF modello
-    const url = 'https://alfpes24.github.io/gipotest25/preventivo.pdf';
+    // carica il PDF modello dal percorso relativo
+    const url = 'preventivo.pdf';
     const existingBytes = await fetch(url).then(r=>r.arrayBuffer());
     const pdfDoc = await PDFLib.PDFDocument.load(existingBytes);
     const form   = pdfDoc.getForm();
 
+    // helper per scrivere in sicurezza
+    function setField(name, value) {
+      try {
+        const field = form.getField(name);
+        field.setText(value);
+      } catch (e) {
+        console.warn(`Campo '${name}' non trovato`, e);
+      }
+    }
+
     // 1. Dati Struttura
-    form.getTextField('nome_struttura').setText(d.nomeStruttura);
-    form.getTextField('referente').setText(d.referente);
-    form.getTextField('email').setText(d.email);
-    form.getTextField('telefono').setText(d.telefono);
+    setField('nome_struttura', d.nomeStruttura);
+    setField('nome_referente', d.referente);
+    setField('telefono_sale', d.telefono);
+    setField('data_preventivo', d.dataPreventivo);
 
     // 2. Configurazione Base
-    form.getTextField('n_ambulatori').setText(d.rooms.toString());
-    form.getTextField('n_medici').setText(d.doctors.toString());
-    form.getTextField('versione_gipo').setText(d.bundle.toUpperCase());
-    form.getTextField('crm_incluso').setText(d.crm ? 'Sì' : 'No');
-    form.getTextField('tablet_firma').setText(d.tablet ? 'Sì' : 'No');
-    form.getTextField('lettore_ts').setText(d.lettore ? 'Sì' : 'No');
+    setField('n_ambulatori', d.rooms.toString());
+    setField('versione_gipo', d.bundle.toUpperCase());
+    setField('canone_listino', d.canoneListino.toFixed(2));
 
-    // 3. Moduli Aggiuntivi
-    form.getTextField('moduli_aggiuntivi').setText(d.addons.join(', ') || '-');
+    // 3. Moduli Aggiuntivi (lista generica)
+    setField('moduli_aggiuntivi', d.addons.join(', ') || '-');
 
-    // 4. Prezzi di Listino
-    form.getTextField('canone_listino').setText(d.canoneListino.toFixed(2));
-    form.getTextField('setup_listino').setText(d.setupListino.toFixed(2));
-    form.getTextField('totale_setup_listino').setText(d.totaleListino.toFixed(2));
+    // 4. Offerta Riservata
+    setField('canone_promozionale', d.canoneReale.toFixed(2));
+    setField('setup_scontato', d.setupReale.toFixed(2));
+    setField('totale_setup_reale', d.totaleReale.toFixed(2));
 
-    // 5. Offerta Riservata
-    form.getTextField('canone_promozionale').setText(d.canoneReale.toFixed(2));
-    form.getTextField('setup_scontato').setText(d.setupReale.toFixed(2));
-    form.getTextField('totale_setup_reale').setText(d.totaleReale.toFixed(2));
+    // 5. Totale Preventivo
+    setField('totale_preventivo_mensile', d.canoneReale.toFixed(2));
 
-    // 6. Dettaglio Sconti (puoi personalizzare)
-    form.getTextField('sconti_attivi').setText('–');
-    form.getTextField('scadenza_offerta').setText(new Date(Date.now()+7*24*3600e3).toLocaleDateString('it-IT'));
+    // 6. Firma e Data
+    setField('luogo', 'Firma in Sede');
+    setField('data', new Date().toLocaleDateString('it-IT'));
+    setField('firma_referente', d.referente);
 
-    // 7. Totale Preventivo
-    form.getTextField('totale_preventivo_mensile').setText((d.canoneReale).toFixed(2));
-
-    // 8. Note Aggiuntive
-    form.getTextField('note_aggiuntive').setText('-');
-
-    // 9. Firma e Accettazione
-    const today = new Date();
-    form.getTextField('luogo').setText('Firma in Sede');
-    form.getTextField('data').setText(today.toLocaleDateString('it-IT'));
-    form.getTextField('firma_referente').setText(d.referente);
-
-    // salva e download
     const pdfBytes = await pdfDoc.save();
     const blob     = new Blob([pdfBytes], { type: 'application/pdf' });
     const link     = document.createElement('a');
@@ -251,7 +192,6 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('calculate-btn').addEventListener('click', calcolaPreventivo);
   document.getElementById('addon-btn').addEventListener('click', ()=> toggleModal('addon-modal', true));
   document.getElementById('close-addon').addEventListener('click', ()=> toggleModal('addon-modal', false));
-  document.getElementById('check-btn').addEventListener('click', avviaVerifica);
   document.getElementById('generate-pdf-btn').addEventListener('click', ()=> toggleModal('pdf-modal', true));
   document.getElementById('annulla-pdf').addEventListener('click', ()=> toggleModal('pdf-modal', false));
   document.getElementById('conferma-pdf').addEventListener('click', confermaGenerazionePDF);
