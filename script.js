@@ -133,7 +133,7 @@ async function generaPDF(d) {
     const { PDFDocument } = PDFLib;
 
     // carica il PDF modello dal link raw GitHub
-    const url       = 'https://raw.githubusercontent.com/tuo-username/repo/main/preventivo.pdf';
+    const url       = 'https://raw.githubusercontent.com/tuo-username/repo/main/preventivo-ok.pdf';
     const bytes     = new Uint8Array(await fetch(url).then(r=>r.arrayBuffer()));
     const pdfDoc    = await PDFDocument.load(bytes, { ignoreEncryption: true });
     const form      = pdfDoc.getForm();
