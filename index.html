@@ -12,7 +12,7 @@
   <!-- Layout principale -->
   <div class="layout-container">
     
-    <!-- Colonna sinistra -->
+    <!-- Colonna sinistra: presentazione -->
     <section class="presentation">
       <img src="https://www.giponext.it/Images/logo-gipo-next-primary-tagline.svg" class="logo" alt="GipoNext logo" />
       <h1>Il gestionale per ambulatori<br>più evoluto in Italia</h1>
@@ -26,7 +26,7 @@
       <div class="badge">Scelto da oltre 4.000 strutture sanitarie</div>
     </section>
 
-    <!-- Colonna destra -->
+    <!-- Colonna destra: form di configurazione -->
     <section class="form-box">
       <form id="calculator-form">
         <h2>Configura il tuo preventivo</h2>
@@ -102,20 +102,38 @@
   <div id="pdf-modal" class="modal hidden">
     <div class="modal-content">
       <h3>Completa i dati per il preventivo</h3>
+      
       <div class="form-group">
         <label for="nomeStruttura">Nome Struttura</label>
         <input type="text" id="nomeStruttura" required />
       </div>
+      
       <div class="form-group">
         <label for="nomeReferente">Nome Referente</label>
         <input type="text" id="nomeReferente" required />
       </div>
+
+      <!-- Nuovi campi obbligatori -->
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required />
+      </div>
+      <div class="form-group">
+        <label for="telefono">Telefono</label>
+        <input type="tel" id="telefono" required />
+      </div>
+
       <div class="form-group">
         <label for="nomeSale">Nome Sale</label>
         <input type="text" id="nomeSale" required />
       </div>
-      <button type="button" id="conferma-pdf" class="btn-primary">Continua e genera PDF</button>
-      <button type="button" id="annulla-pdf" class="btn-outline" style="margin-top: 10px;">Annulla</button>
+
+      <button type="button" id="conferma-pdf" class="btn-primary">
+        Continua e genera PDF
+      </button>
+      <button type="button" id="annulla-pdf" class="btn-outline" style="margin-top: 10px;">
+        Annulla
+      </button>
     </div>
   </div>
 
